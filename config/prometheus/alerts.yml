@@ -1,0 +1,48 @@
+groups:
+  - name: llm_containers
+    interval: 30s
+    rules:
+      - alert: ContainerDown
+        expr: up{job="llm-containers"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "LLM Container {{ $labels.container_name }} is down"
+          description: "Container {{ $labels.container_name }} (Service ID: {{ $labels.service_id }}) has been down for more than 5 minutes."
+
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.container_name }}"
+          description: "Container {{ $labels.container_name }} is using {{ $value }}% of its memory limit."
+
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.container_name }}"
+          description: "Container {{ $labels.container_name }} CPU usage is above 80% for 10 minutes."
+
+      - alert: GPUMemoryHigh
+        expr: nvidia_gpu_memory_used_bytes / nvidia_gpu_memory_total_bytes > 0.95
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GPU memory usage high on {{ $labels.container_name }}"
+          description: "GPU memory usage is above 95% for container {{ $labels.container_name }}."
+
+      - alert: ContainerRestarts
+        expr: rate(container_restart_count[1h]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container {{ $labels.container_name }} restarting frequently"
+          description: "Container {{ $labels.container_name }} has restarted {{ $value }} times in the last hour."
