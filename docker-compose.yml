@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  # Portainer CE - Container orchestration and management UI
+  portainer:
+    image: portainer/portainer-ce:2.19.0
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - llm-network
+    ports:
+      - "8000:8000"
+      - "9000:9000"
+    environment:
+      TZ: UTC
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer-data:/data
+    labels:
+      com.example.description: "Container orchestration platform"
+
+  # NGINX - Reverse proxy and API gateway with SSL/TLS termination
+  nginx:
+    image: nginx:1.25.3-alpine
+    container_name: llm-api-gateway
+    restart: unless-stopped
+    networks:
+      - llm-network
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./config/nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - portainer
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      com.example.description: "Reverse proxy and API gateway"
+
+  # Prometheus - Time-series metrics collection and storage
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - llm-network
+    ports:
+      - "9090:9090"
+    environment:
+      TZ: UTC
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    labels:
+      com.example.description: "Metrics collection service"
+
+  # Grafana - Visualization and monitoring dashboard
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: grafana
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - llm-network
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme}
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+      GF_SERVER_ROOT_URL: https://${GRAFANA_DOMAIN:-grafana.example.com}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      TZ: UTC
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      com.example.description: "Metrics visualization dashboard"
+
+  # Redis - Cache layer for improved performance
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - llm-network
+    ports:
+      - "6379:6379"
+    environment:
+      TZ: UTC
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    labels:
+      com.example.description: "Redis cache service"
+
+  # AlertManager - Manages alerts from Prometheus
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: alertmanager
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - llm-network
+    ports:
+      - "9093:9093"
+    environment:
+      TZ: UTC
+    volumes:
+      - ./config/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    labels:
+      com.example.description: "Alert management service"
+
+networks:
+  llm-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  portainer-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  redis-data:
+    driver: local
+  alertmanager-data:
+    driver: local

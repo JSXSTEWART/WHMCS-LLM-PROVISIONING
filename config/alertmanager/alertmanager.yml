@@ -1,0 +1,152 @@
+# AlertManager Configuration
+# Routes and manages alerts from Prometheus
+
+global:
+  resolve_timeout: 5m
+  # SMTP configuration for email notifications
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_auth_username: 'alerts@example.com'
+  smtp_auth_password: 'your_smtp_password'
+  smtp_require_tls: true
+
+# The root route for all alerts
+route:
+  receiver: 'default'
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+
+  # Sub-routes for specific services
+  routes:
+    # Critical infrastructure alerts
+    - match:
+        severity: critical
+      receiver: 'critical-ops'
+      group_wait: 5s
+      repeat_interval: 30m
+      continue: true
+
+    # GPU-related alerts
+    - match:
+        component: gpu
+      receiver: 'gpu-ops'
+      group_wait: 5s
+      repeat_interval: 1h
+
+    # Container alerts
+    - match:
+        component: containers
+      receiver: 'container-team'
+      group_wait: 10s
+      repeat_interval: 2h
+
+    # API alerts
+    - match:
+        component: api
+      receiver: 'api-team'
+      group_wait: 10s
+      repeat_interval: 6h
+
+    # Inference-specific alerts
+    - match:
+        component: inference
+      receiver: 'inference-team'
+      group_wait: 10s
+      repeat_interval: 4h
+
+# Inhibition rules to suppress alerts
+inhibit_rules:
+  # Suppress warning-level alerts when critical is already triggered
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance', 'service']
+
+  # Suppress low-priority alerts when service is already down
+  - source_match:
+      severity: 'critical'
+      alertname: 'ServiceDown'
+    target_match:
+      severity: 'warning'
+    equal: ['instance']
+
+  # Suppress resource warnings when already critical
+  - source_match:
+      severity: 'critical'
+      alertname: 'CriticalMemoryUsage'
+    target_match:
+      severity: 'warning'
+      alertname: 'HighMemoryUsage'
+    equal: ['instance']
+
+# Receivers define how alerts are sent
+receivers:
+  # Default receiver for all alerts
+  - name: 'default'
+    email_configs:
+      - to: 'ops@example.com'
+        from: 'alerts@example.com'
+        smarthost: 'smtp.example.com:587'
+        auth_username: 'alerts@example.com'
+        auth_password: 'your_smtp_password'
+        require_tls: true
+        headers:
+          Subject: '[{{ .GroupLabels.alertname }}] Alert from LLM Provisioning'
+        html: |
+          <h2>{{ .GroupLabels.alertname }}</h2>
+          {{ range .Alerts }}
+            <h3>{{ .Labels.instance }}</h3>
+            <p>{{ .Annotations.description }}</p>
+          {{ end }}
+
+  # Critical alerts - immediate notification
+  - name: 'critical-ops'
+    email_configs:
+      - to: 'critical-ops@example.com'
+        from: 'alerts@example.com'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#critical-alerts'
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+        send_resolved: true
+    webhook_configs:
+      - url: 'http://webhook-receiver:8080/alerts/critical'
+        send_resolved: true
+
+  # GPU team notifications
+  - name: 'gpu-ops'
+    email_configs:
+      - to: 'gpu-team@example.com'
+        from: 'alerts@example.com'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#gpu-alerts'
+        title: '⚠️ GPU Alert: {{ .GroupLabels.alertname }}'
+
+  # Container team notifications
+  - name: 'container-team'
+    email_configs:
+      - to: 'container-team@example.com'
+        from: 'alerts@example.com'
+    pagerduty_configs:
+      - service_key: 'your_pagerduty_integration_key'
+        description: '{{ .GroupLabels.alertname }} on {{ .GroupLabels.instance }}'
+
+  # API team notifications
+  - name: 'api-team'
+    email_configs:
+      - to: 'api-team@example.com'
+        from: 'alerts@example.com'
+
+  # Inference team notifications
+  - name: 'inference-team'
+    email_configs:
+      - to: 'inference-team@example.com'
+        from: 'alerts@example.com'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#inference-alerts'
+        title: 'Inference Alert: {{ .GroupLabels.alertname }}'

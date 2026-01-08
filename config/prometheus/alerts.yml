@@ -1,0 +1,234 @@
+# Prometheus Alert Rules
+# Defines conditions that trigger alerts when services or resources are unhealthy
+
+groups:
+  - name: llm_provisioning_alerts
+    interval: 30s
+    rules:
+      # Service availability alerts
+      - alert: ServiceDown
+        expr: up{job!="prometheus"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} on instance {{ $labels.instance }} has been down for more than 5 minutes"
+
+      - alert: PortainerDown
+        expr: up{job="portainer"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: orchestration
+        annotations:
+          summary: "Portainer service is unavailable"
+          description: "Container orchestration platform is down. Container management is unavailable."
+
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          component: monitoring
+        annotations:
+          summary: "Prometheus monitoring is down"
+          description: "Metrics collection has stopped. Monitoring and alerting may be impaired."
+
+      # Resource usage alerts
+      - alert: HighMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High memory usage on container {{ $labels.container_name }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} ({{ $labels.container_name }})"
+
+      - alert: CriticalMemoryUsage
+        expr: (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          component: resources
+        annotations:
+          summary: "Critical memory usage on container {{ $labels.container_name }}"
+          description: "Memory usage is {{ $value | humanizePercentage }}, approaching container limit"
+
+      - alert: HighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High CPU usage on {{ $labels.container_name }}"
+          description: "CPU usage is {{ $value | humanizePercentage }} for {{ $labels.container_name }}"
+
+      - alert: DiskSpaceAllocated
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.20
+        for: 30m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "Disk space running low on {{ $labels.device }}"
+          description: "Only {{ $value | humanizePercentage }} of disk space available"
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.05
+        for: 10m
+        labels:
+          severity: critical
+          component: resources
+        annotations:
+          summary: "Critical disk space on {{ $labels.device }}"
+          description: "Only {{ $value | humanizePercentage }} of disk space remains"
+
+      # GPU metrics
+      - alert: GPUMemoryExhausted
+        expr: (nvidia_smi_memory_used_mb / nvidia_smi_memory_total_mb) > 0.90
+        for: 5m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "GPU {{ $labels.gpu }} memory nearly exhausted"
+          description: "GPU memory usage: {{ $value | humanizePercentage }}"
+
+      - alert: GPUHighTemperature
+        expr: nvidia_smi_temperature_gpu > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU {{ $labels.gpu }} running hot ({{ $value }}°C)"
+          description: "GPU temperature is above safe operating threshold"
+
+      - alert: GPUCriticalTemperature
+        expr: nvidia_smi_temperature_gpu > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "GPU {{ $labels.gpu }} thermal critical ({{ $value }}°C)"
+          description: "GPU temperature is critical. Thermal throttling may occur."
+
+      # Container lifecycle alerts
+      - alert: LLMContainerRestarting
+        expr: rate(container_last_seen{name=~"llm-.*"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: containers
+        annotations:
+          summary: "LLM container {{ $labels.name }} is frequently restarting"
+          description: "Container restart rate indicates potential issues"
+
+      - alert: ContainerCreationFailure
+        expr: increase(container_state_exited_total[1h]) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: containers
+        annotations:
+          summary: "High rate of container creation failures"
+          description: "{{ $value }} containers exited in the last hour"
+
+      # Database alerts (if applicable)
+      - alert: DatabaseConnectionPoolExhausted
+        expr: (mysql_global_status_threads_connected / mysql_global_variables_max_connections) > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "{{ $value | humanizePercentage }} of connections in use"
+
+      # API and network alerts
+      - alert: HighAPIErrorRate
+        expr: (rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API error rate (5xx)"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.path }}"
+
+      - alert: APIResponseTimeHigh
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "API response time is slow"
+          description: "P99 latency: {{ $value | humanizeDuration }}"
+
+      - alert: RedisConnectionFailure
+        expr: redis_connected_clients == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis cache connection failed"
+          description: "Cannot connect to Redis cache service"
+
+      - alert: RedisMemoryUsageHigh
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Memory usage: {{ $value | humanizePercentage }}"
+
+      # LLM Model inference alerts
+      - alert: InferenceQueueDepth
+        expr: llm_inference_queue_depth > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: inference
+        annotations:
+          summary: "LLM inference queue is building up"
+          description: "{{ $value }} inference requests pending"
+
+      - alert: InferenceLatencyHigh
+        expr: llm_inference_latency_p99_ms > 10000
+        for: 10m
+        labels:
+          severity: warning
+          component: inference
+        annotations:
+          summary: "LLM inference latency is high"
+          description: "P99 latency: {{ $value }}ms"
+
+      # Alertmanager itself
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: alerting
+        annotations:
+          summary: "AlertManager is down"
+          description: "Alert routing and notification service is unavailable"
+
+      - alert: AlertmanagerNotificationFailure
+        expr: increase(alertmanager_notifications_failed_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: alerting
+        annotations:
+          summary: "AlertManager notification delivery is failing"
+          description: "{{ $value }} notifications failed in the last 10 minutes"

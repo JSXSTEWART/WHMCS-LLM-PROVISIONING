@@ -1,0 +1,177 @@
+# Environment and Configuration
+config.env
+config.env.local
+config.env.*.local
+.env
+.env.local
+.env.*.local
+
+# Secrets and Credentials
+secrets/
+secrets/*
+!secrets/.gitkeep
+!secrets/README.md
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+credentials.json
+api_keys.txt
+passwords.txt
+
+# Logs
+logs/
+*.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+vendor/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.eclipse
+.project
+.pydevproject
+.settings/
+*.iml
+
+# Docker
+docker-compose.override.yml
+.dockerignore.local
+docker-compose.dev.yml
+
+# Test and Coverage
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+*~
+.swp
+.swo
+*.bak
+
+# Certificates (generated)
+config/nginx/ssl/*.pem
+config/nginx/ssl/*.crt
+config/nginx/ssl/*.key
+!config/nginx/ssl/.gitkeep
+
+# Backup Files
+*.backup
+*.backup.*
+*.bak.*
+backup/
+backups/
+
+# Installation Artifacts
+install.log
+uninstall.log
+
+# OS Specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Build Artifacts
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Monitoring and Metrics
+prometheus/data/
+grafana/data/
+alertmanager/data/
+redis/data/
+
+# Volume Data (local development)
+data/
+volumes/
+postgres_data/
+mysql_data/
+mongo_data/
+
+# LLM Model Cache
+models/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# Development Ignore
+.git/config.local
+.vscode/settings.json
+.env.development
+debug.log
+
+# CI/CD
+.github/workflows/*.local
+.gitlab-ci.local.yml
+.travis.local.yml
+
+# Keep important directories
+!scripts/.gitkeep
+!config/nginx/ssl/.gitkeep
+!secrets/.gitkeep
+!logs/.gitkeep

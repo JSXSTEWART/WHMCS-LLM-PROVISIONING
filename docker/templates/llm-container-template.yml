@@ -1,0 +1,121 @@
+# LLM Container Template
+# Docker Compose template for spinning up individual LLM inference containers
+# Customize per service instance
+
+version: '3.8'
+
+services:
+  llm-inference:
+    # HuggingFace Text Generation Inference (TGI) image
+    image: ghcr.io/huggingface/text-generation-inference:2.0.0
+    container_name: llm-${SERVICE_ID}-${RANDOM}
+    restart: unless-stopped
+
+    # GPU Support - NVIDIA
+    runtime: nvidia
+
+    environment:
+      # Model Configuration
+      MODEL_ID: ${MODEL_ID}
+      QUANTIZE: ${QUANTIZE:-bfloat16}
+      NUM_SHARD: ${NUM_SHARD:-1}
+      TRUST_REMOTE_CODE: 'true'
+
+      # Performance tuning
+      CUDA_VISIBLE_DEVICES: ${CUDA_DEVICES:-0}
+      MAX_TOTAL_TOKENS: ${MAX_TOTAL_TOKENS:-4096}
+      MAX_INPUT_LENGTH: ${MAX_INPUT_LENGTH:-3072}
+      MAX_BATCH_PREFILL_TOKENS: ${MAX_BATCH_PREFILL_TOKENS:-4096}
+      BATCH_SIZE: ${BATCH_SIZE:-256}
+
+      # Logging and monitoring
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      RUST_LOG: ${RUST_LOG:-info}
+      TZ: UTC
+
+      # Security
+      DISABLE_CUSTOM_KERNELS: 'false'
+
+    ports:
+      - "${CONTAINER_PORT}:80"
+
+    volumes:
+      # Model cache
+      - type: volume
+        source: huggingface-cache
+        target: /data
+        read_only: false
+
+      # Temporary files
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 2147483648  # 2GB
+
+    networks:
+      - llm-network
+
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '${CPU_LIMIT}'
+          memory: ${MEMORY_LIMIT}M
+        reservations:
+          cpus: '${CPU_RESERVED}'
+          memory: ${MEMORY_RESERVED}M
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-1}
+              capabilities: [gpu]
+
+    # Health Check
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost/health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Logging Configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+        labels: 'service_id=${SERVICE_ID}'
+
+    # Labels for monitoring and orchestration
+    labels:
+      com.example.service-id: '${SERVICE_ID}'
+      com.example.model: '${MODEL_ID}'
+      com.example.gpu-type: '${GPU_TYPE}'
+      com.example.managed-by: 'llm-provisioning'
+
+    # Security options
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only_root_filesystem: false
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  huggingface-cache:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /data/llm-models/${SERVICE_ID}
+
+networks:
+  llm-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
