@@ -392,8 +392,9 @@ function llmprovisioning_CreateAccount(array $params): string {
         $containerPort = 8080 + ($serviceId % 1000);
 
         // Create container configuration
+        $tgiVersion = getenv('TGI_VERSION') ?: 'latest';
         $containerConfig = [
-            'Image' => "huggingface/text-generation-inference:{$getenv('TGI_VERSION') ?? 'latest'}",
+            'Image' => "huggingface/text-generation-inference:{$tgiVersion}",
             'name' => $containerName,
             'Hostname' => $containerName,
             'Env' => [
