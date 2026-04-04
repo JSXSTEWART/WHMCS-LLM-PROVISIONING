@@ -1,0 +1,36 @@
+{
+  "name": "whmcs-llm-provisioning",
+  "version": "1.0.0",
+  "description": "WHMCS LLM Container Provisioning System",
+  "main": "index.js",
+  "scripts": {
+    "start": "docker-compose up -d",
+    "stop": "docker-compose down",
+    "restart": "docker-compose restart",
+    "logs": "docker-compose logs -f",
+    "pull": "docker-compose pull",
+    "build": "docker-compose build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JSXSTEWART/WHMCS-LLM-PROVISIONING.git"
+  },
+  "keywords": [
+    "whmcs",
+    "llm",
+    "ai",
+    "gpu",
+    "docker",
+    "portainer",
+    "cyberpanel",
+    "provisioning",
+    "automation",
+    "hosting"
+  ],
+  "author": "WHMCS LLM Provisioning Contributors",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/JSXSTEWART/WHMCS-LLM-PROVISIONING/issues"
+  },
+  "homepage": "https://github.com/JSXSTEWART/WHMCS-LLM-PROVISIONING#readme"
+}

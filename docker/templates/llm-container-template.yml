@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  llm-container-{{SERVICE_ID}}:
+    image: {{MODEL_IMAGE}}
+    container_name: llm-{{SERVICE_ID}}
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - MODEL_ID={{MODEL_NAME}}
+      - NUM_SHARD=1
+      - MAX_INPUT_LENGTH=2048
+      - MAX_TOTAL_TOKENS=4096
+      - MAX_BATCH_PREFILL_TOKENS=4096
+      - HUGGING_FACE_HUB_TOKEN=${HF_TOKEN}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - PORT=8000
+    volumes:
+      - llm-data-{{SERVICE_ID}}:/data
+      - llm-models-{{SERVICE_ID}}:/models
+    ports:
+      - "{{HOST_PORT}}:8000"
+    networks:
+      - llm_network
+    deploy:
+      resources:
+        limits:
+          cpus: '{{CPU_LIMIT}}'
+          memory: {{MEMORY_LIMIT}}G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    labels:
+      - "com.whmcs.service.id={{SERVICE_ID}}"
+      - "com.whmcs.client.id={{CLIENT_ID}}"
+      - "com.whmcs.model={{MODEL_NAME}}"
+      - "traefik.enable=true"
+      - "traefik.http.routers.llm-{{SERVICE_ID}}.rule=Host(`{{DOMAIN}}`)"
+      - "traefik.http.routers.llm-{{SERVICE_ID}}.entrypoints=websecure"
+      - "traefik.http.routers.llm-{{SERVICE_ID}}.tls.certresolver=letsencrypt"
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=8000"
+      - "prometheus.io/path=/metrics"
+
+networks:
+  llm_network:
+    external: true
+
+volumes:
+  llm-data-{{SERVICE_ID}}:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/llm-containers/{{SERVICE_ID}}/data
+  llm-models-{{SERVICE_ID}}:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/llm-containers/{{SERVICE_ID}}/models

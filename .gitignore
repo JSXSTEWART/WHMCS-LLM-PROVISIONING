@@ -1,0 +1,100 @@
+# Environment variables
+.env
+.env.local
+
+# Secrets
+secrets/*.txt
+secrets/*.key
+secrets/*.pem
+
+# SSL Certificates
+config/nginx/ssl/*.pem
+config/nginx/ssl/*.key
+config/nginx/ssl/*.crt
+*.crt
+*.key
+*.pem
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Backups
+backups/
+*.tar.gz
+*.sql
+*.sql.gz
+
+# Docker volumes
+volumes/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS files
+Thumbs.db
+.directory
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.cache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# PHP
+vendor/
+composer.lock
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage/
+.coverage
+htmlcov/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Compiled files
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Documentation builds
+docs/_build/
+site/
